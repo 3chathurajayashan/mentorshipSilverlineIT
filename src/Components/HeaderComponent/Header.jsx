@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 const NAV_LINKS = [
   { label: "Mentors", href: "#mentors" },
@@ -66,12 +67,12 @@ function Header() {
 
         {/* Desktop actions */}
         <div className="hidden items-center gap-4 md:flex">
-          <a
-            href="/signin"
+          <Link
+            to="/signin"
             className="text-[12px] tracking-[-0.01em] text-[#0066cc] transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3] rounded-sm"
           >
             Sign in
-          </a>
+          </Link>
           <a
             href="/signup"
             className="rounded-full bg-[#ee0a0a] px-3.5 py-1 text-[12px] font-normal tracking-[-0.01em] text-white transition-colors hover:bg-[#0077ed] active:bg-[#006edb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3] focus-visible:ring-offset-2"

@@ -155,9 +155,7 @@ function Hero() {
               <span className="text-[#2997ff]">week 12</span> &nbsp;Present your
               project. Get hired.
             </p>
-            <p className="mt-4 text-white">
-              <span className="text-[#30d158]">✓</span> Ready for the next step
-            </p>
+            <p className="mt-4 text-white">Ready for the next step</p>
           </div>
         </div>
       </motion.div>
