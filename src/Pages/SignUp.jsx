@@ -1,8 +1,12 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
 
 const css = `
+/* SF Pro is Apple's own font and only exists on Apple devices.
+   Inter is the closest open match, so every other device gets it instead. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 .su-page {
   min-height: 100vh;
   display: flex;
@@ -10,47 +14,95 @@ const css = `
   align-items: center;
   background: #fff;
   color: #1d1d1f;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-    "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "SF Pro Text", "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Inter", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.su-title,
+.su-section-title {
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 .su-main {
   flex: 1;
   width: 100%;
-  max-width: 460px;
-  padding: 65px 24px 48px;
+  max-width: 640px;
+  padding: 72px 24px 56px;
   box-sizing: border-box;
-  text-align: center;
 }
 
-.su-logo {
-  font-size: 44px;
-  line-height: 1;
-  margin-bottom: 28px;
+/* Header */
+
+.su-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.su-mark {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 24px;
+  color: #1d1d1f;
 }
 
 .su-title {
-  font-size: 32px;
-  line-height: 1.125;
+  font-size: 40px;
+  line-height: 1.1;
   font-weight: 600;
-  letter-spacing: 0.004em;
+  letter-spacing: -0.022em;
   margin: 0 0 12px;
 }
 
 .su-sub {
-  font-size: 17px;
-  color: #6e6e73;
-  margin: 0 0 32px;
+  font-size: 19px;
   line-height: 1.4;
+  color: #6e6e73;
+  margin: 0 auto;
+  max-width: 440px;
 }
+
+/* Sections */
+
+.su-section {
+  background: #f5f5f7;
+  border-radius: 18px;
+  padding: 28px 28px 16px;
+  margin-bottom: 20px;
+}
+
+.su-section-head {
+  margin-bottom: 20px;
+}
+
+.su-section-title {
+  font-size: 21px;
+  line-height: 1.19;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin: 0 0 4px;
+}
+
+.su-section-desc {
+  font-size: 14px;
+  line-height: 1.43;
+  color: #6e6e73;
+  margin: 0;
+}
+
+/* Layout helpers */
 
 .su-row {
   display: flex;
   gap: 12px;
 }
 
-.su-row .su-field {
+.su-row > .su-field {
   flex: 1;
   min-width: 0;
 }
@@ -61,7 +113,10 @@ const css = `
   text-align: left;
 }
 
-.su-input {
+/* Inputs */
+
+.su-input,
+.su-select {
   width: 100%;
   box-sizing: border-box;
   height: 56px;
@@ -76,20 +131,24 @@ const css = `
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.su-input:hover {
+.su-input:hover,
+.su-select:hover {
   border-color: #86868b;
 }
 
-.su-input:focus {
+.su-input:focus,
+.su-select:focus {
   border-color: #0071e3;
   box-shadow: 0 0 0 4px rgba(0, 125, 250, 0.25);
 }
 
-.su-input.error {
+.su-input.error,
+.su-select.error {
   border-color: #e30000;
 }
 
-.su-input.error:focus {
+.su-input.error:focus,
+.su-select.error:focus {
   box-shadow: 0 0 0 4px rgba(227, 0, 0, 0.18);
 }
 
@@ -109,6 +168,32 @@ const css = `
   transform: translateY(-9px) scale(0.76);
 }
 
+/* Select: label is always raised */
+
+.su-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 44px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%2386868b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+}
+
+.su-select + .su-label {
+  transform: translateY(-9px) scale(0.76);
+}
+
+.su-select.is-empty {
+  color: #86868b;
+}
+
+.su-select option {
+  color: #1d1d1f;
+}
+
+/* Show / hide password */
+
 .su-toggle {
   position: absolute;
   right: 14px;
@@ -126,9 +211,19 @@ const css = `
   text-decoration: underline;
 }
 
+.su-toggle:focus-visible,
+.su-link:focus-visible,
+.su-seg button:focus-visible {
+  outline: 2px solid #0071e3;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .su-input.has-toggle {
   padding-right: 64px;
 }
+
+/* Password strength */
 
 .su-meter {
   display: flex;
@@ -140,7 +235,7 @@ const css = `
   flex: 1;
   height: 4px;
   border-radius: 2px;
-  background: #e8e8ed;
+  background: #d2d2d7;
   transition: background 0.2s;
 }
 
@@ -152,25 +247,61 @@ const css = `
   line-height: 1.4;
 }
 
+/* Messages */
+
+.su-field-error {
+  color: #e30000;
+  font-size: 13px;
+  text-align: left;
+  margin: 6px 4px 0;
+  line-height: 1.35;
+}
+
 .su-error {
   color: #e30000;
   font-size: 14px;
   text-align: left;
-  margin: 0 4px 12px;
+  margin: 0 4px 16px;
 }
 
-.su-success {
-  color: #248a3d;
-  font-size: 14px;
-  text-align: left;
-  margin: 0 4px 12px;
+/* Account type segmented control */
+
+.su-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: #e8e8ed;
+  border-radius: 12px;
 }
+
+.su-seg button {
+  flex: 1;
+  height: 44px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: #424245;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.su-seg button[aria-checked="true"] {
+  background: #fff;
+  color: #1d1d1f;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Terms + submit */
 
 .su-check {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin: 20px 0 24px;
+  margin: 28px 4px 24px;
   font-size: 14px;
   line-height: 1.4;
   text-align: left;
@@ -202,7 +333,7 @@ const css = `
 
 .su-button {
   width: 100%;
-  height: 48px;
+  height: 52px;
   border: 0;
   border-radius: 980px;
   background: #0071e3;
@@ -218,6 +349,11 @@ const css = `
   background: #0077ed;
 }
 
+.su-button:focus-visible {
+  outline: 2px solid #0071e3;
+  outline-offset: 3px;
+}
+
 .su-button:disabled {
   opacity: 0.4;
   cursor: default;
@@ -226,7 +362,7 @@ const css = `
 .su-divider {
   height: 1px;
   background: #d2d2d7;
-  margin: 36px 0 24px;
+  margin: 40px 0 24px;
   border: 0;
 }
 
@@ -234,7 +370,10 @@ const css = `
   font-size: 14px;
   color: #6e6e73;
   margin: 0;
+  text-align: center;
 }
+
+/* Footer */
 
 .su-footer {
   width: 100%;
@@ -255,40 +394,28 @@ const css = `
   text-decoration: none;
 }
 
-.su-section-title {
-  text-align: left;
-  font-size: 17px;
-  font-weight: 600;
-  margin: 28px 0 14px;
+.su-footer a:hover {
+  text-decoration: underline;
 }
 
-.su-select {
-  width: 100%;
-  box-sizing: border-box;
-  height: 56px;
-  padding: 0 16px;
-  font: inherit;
-  font-size: 16px;
-  color: #1d1d1f;
-  background: #fff;
-  border: 1px solid #d2d2d7;
-  border-radius: 12px;
-  outline: none;
-  margin-bottom: 12px;
-}
+/* Responsive */
 
-.su-select:focus {
-  border-color: #0071e3;
-  box-shadow: 0 0 0 4px rgba(0, 125, 250, 0.25);
-}
-
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .su-main {
     padding-top: 48px;
   }
 
   .su-title {
-    font-size: 28px;
+    font-size: 32px;
+  }
+
+  .su-sub {
+    font-size: 17px;
+  }
+
+  .su-section {
+    padding: 22px 16px 10px;
+    border-radius: 16px;
   }
 
   .su-row {
@@ -299,8 +426,10 @@ const css = `
 
 @media (prefers-reduced-motion: reduce) {
   .su-input,
+  .su-select,
   .su-label,
   .su-button,
+  .su-seg button,
   .su-meter span {
     transition: none;
   }
@@ -308,8 +437,30 @@ const css = `
 `;
 
 const STRENGTH_COLORS = ["#e30000", "#ff9f0a", "#30b350", "#248a3d"];
-
 const STRENGTH_LABELS = ["Too weak", "Fair", "Good", "Strong"];
+
+const ROLES = [
+  { value: "STUDENT", label: "Student" },
+  { value: "TUTOR", label: "Tutor" },
+];
+
+const INSTITUTE_TYPES = [
+  { value: "SCHOOL", label: "School" },
+  { value: "UNIVERSITY", label: "University" },
+  { value: "COLLEGE", label: "College" },
+  { value: "OTHER", label: "Other" },
+];
+
+const EDUCATION_LEVELS = [
+  { value: "PRIMARY", label: "Primary" },
+  { value: "SECONDARY", label: "Secondary" },
+  { value: "O_LEVEL", label: "O/L" },
+  { value: "A_LEVEL", label: "A/L" },
+  { value: "DIPLOMA", label: "Diploma" },
+  { value: "UNDERGRADUATE", label: "Undergraduate" },
+  { value: "POSTGRADUATE", label: "Postgraduate" },
+  { value: "OTHER", label: "Other" },
+];
 
 function strengthOf(password) {
   if (!password) return 0;
@@ -329,9 +480,12 @@ function Field({ id, label, error, children, ...props }) {
     <div className="su-field">
       <input
         id={id}
-        className={`su-input${error ? " error" : ""}${children ? " has-toggle" : ""}`}
+        className={`su-input${error ? " error" : ""}${
+          children ? " has-toggle" : ""
+        }`}
         placeholder=" "
         aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
         {...props}
       />
 
@@ -340,13 +494,68 @@ function Field({ id, label, error, children, ...props }) {
       </label>
 
       {children}
+
+      {error && (
+        <p className="su-field-error" id={`${id}-error`}>
+          {error}
+        </p>
+      )}
     </div>
+  );
+}
+
+function Select({ id, label, value, options, placeholder, error, ...props }) {
+  return (
+    <div className="su-field">
+      <select
+        id={id}
+        value={value}
+        className={`su-select${error ? " error" : ""}${
+          value ? "" : " is-empty"
+        }`}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...props}
+      >
+        <option value="">{placeholder}</option>
+
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
+      <label className="su-label" htmlFor={id}>
+        {label}
+      </label>
+
+      {error && (
+        <p className="su-field-error" id={`${id}-error`}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Section({ title, description, children }) {
+  return (
+    <section className="su-section">
+      <div className="su-section-head">
+        <h2 className="su-section-title">{title}</h2>
+        {description && <p className="su-section-desc">{description}</p>}
+      </div>
+
+      {children}
+    </section>
   );
 }
 
 function SignUp() {
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const formRef = useRef(null);
 
   const [form, setForm] = useState({
     firstName: "",
@@ -383,6 +592,11 @@ function SignUp() {
       [key]: "",
       form: "",
     }));
+  };
+
+  const setRole = (role) => {
+    setForm((previous) => ({ ...previous, role }));
+    setErrors((previous) => ({ ...previous, role: "", form: "" }));
   };
 
   const strength = strengthOf(form.password);
@@ -422,24 +636,11 @@ function SignUp() {
       next.instituteName = "Enter your institute name.";
     }
 
-    if (
-      !["SCHOOL", "UNIVERSITY", "COLLEGE", "OTHER"].includes(form.instituteType)
-    ) {
+    if (!INSTITUTE_TYPES.some((t) => t.value === form.instituteType)) {
       next.instituteType = "Select your institute type.";
     }
 
-    if (
-      ![
-        "PRIMARY",
-        "SECONDARY",
-        "O_LEVEL",
-        "A_LEVEL",
-        "DIPLOMA",
-        "UNDERGRADUATE",
-        "POSTGRADUATE",
-        "OTHER",
-      ].includes(form.educationLevel)
-    ) {
+    if (!EDUCATION_LEVELS.some((l) => l.value === form.educationLevel)) {
       next.educationLevel = "Select your education level.";
     }
 
@@ -458,6 +659,11 @@ function SignUp() {
     setErrors(next);
 
     if (Object.keys(next).length > 0) {
+      // Move focus to the first invalid field.
+      setTimeout(() => {
+        formRef.current?.querySelector('[aria-invalid="true"]')?.focus();
+      }, 0);
+
       return;
     }
 
@@ -509,235 +715,249 @@ function SignUp() {
     }
   };
 
-  const firstError =
-    errors.firstName ||
-    errors.lastName ||
-    errors.email ||
-    errors.phone ||
-    errors.password ||
-    errors.confirm ||
-    errors.instituteName ||
-    errors.instituteType ||
-    errors.educationLevel ||
-    errors.form;
-
   return (
     <div className="su-page">
       <style>{css}</style>
 
       <main className="su-main">
-        <div className="su-logo" aria-hidden="true">
-          🎓
-        </div>
-
-        <h1 className="su-title">Create your account</h1>
-
-        <p className="su-sub">
-          One account for everything. Set up takes about a minute.
-        </p>
-
-        <form onSubmit={handleSubmit} noValidate>
-          {/* BASIC DETAILS */}
-
-          <div className="su-row">
-            <Field
-              id="su-first"
-              label="First name"
-              type="text"
-              autoComplete="given-name"
-              value={form.firstName}
-              onChange={set("firstName")}
-              error={errors.firstName}
-              autoFocus
-            />
-
-            <Field
-              id="su-last"
-              label="Last name"
-              type="text"
-              autoComplete="family-name"
-              value={form.lastName}
-              onChange={set("lastName")}
-              error={errors.lastName}
-            />
-          </div>
-
-          <Field
-            id="su-email"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            value={form.email}
-            onChange={set("email")}
-            error={errors.email}
-          />
-
-          <Field
-            id="su-phone"
-            label="Phone number"
-            type="tel"
-            autoComplete="tel"
-            value={form.phone}
-            onChange={set("phone")}
-            error={errors.phone}
-          />
-
-          {/* PASSWORD */}
-
-          <Field
-            id="su-password"
-            label="Password"
-            type={showPw ? "text" : "password"}
-            autoComplete="new-password"
-            value={form.password}
-            onChange={set("password")}
-            error={errors.password}
+        <header className="su-header">
+          <svg
+            className="su-mark"
+            viewBox="0 0 48 48"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
           >
-            <button
-              type="button"
-              className="su-toggle"
-              onClick={() => setShowPw((previous) => !previous)}
-              aria-pressed={showPw}
-            >
-              {showPw ? "Hide" : "Show"}
-            </button>
-          </Field>
+            <path d="M24 9 4 19l20 10 20-10L24 9Z" />
+            <path d="M12 24v9c0 3 5.4 6 12 6s12-3 12-6v-9" />
+            <path d="M44 19v11" />
+          </svg>
 
-          {form.password && (
-            <>
-              <div className="su-meter" aria-hidden="true">
-                {[0, 1, 2, 3].map((index) => (
-                  <span
-                    key={index}
-                    style={
-                      index < strength
-                        ? {
-                            background: STRENGTH_COLORS[strength - 1],
-                          }
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
+          <h1 className="su-title">Create your account</h1>
 
-              <p className="su-hint" aria-live="polite">
-                Password strength: {STRENGTH_LABELS[strength - 1]}
-              </p>
-            </>
-          )}
+          <p className="su-sub">
+            One account for everything. Setup takes about a minute.
+          </p>
+        </header>
 
-          <Field
-            id="su-confirm"
-            label="Confirm password"
-            type={showPw ? "text" : "password"}
-            autoComplete="new-password"
-            value={form.confirm}
-            onChange={set("confirm")}
-            error={errors.confirm}
-          />
-
-          {!form.password && (
-            <p className="su-hint">
-              Use 8 or more characters with a mix of letters, numbers and
-              symbols.
-            </p>
-          )}
-
+        <form ref={formRef} onSubmit={handleSubmit} noValidate>
           {/* ACCOUNT TYPE */}
 
-          <h3 className="su-section-title">Account type</h3>
-
-          <select
-            className="su-select"
-            value={form.role}
-            onChange={set("role")}
+          <Section
+            title="Account type"
+            description="Choose how you will use your account."
           >
-            <option value="STUDENT">Student</option>
-            <option value="TUTOR">Tutor</option>
-          </select>
+            <div className="su-seg" role="radiogroup" aria-label="Account type">
+              {ROLES.map((role) => (
+                <button
+                  key={role.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.role === role.value}
+                  onClick={() => setRole(role.value)}
+                >
+                  {role.label}
+                </button>
+              ))}
+            </div>
+
+            {errors.role && <p className="su-field-error">{errors.role}</p>}
+          </Section>
+
+          {/* PERSONAL DETAILS */}
+
+          <Section
+            title={form.role === "TUTOR" ? "Tutor details" : "Student details"}
+            description="Tell us who you are and how to reach you."
+          >
+            <div className="su-row">
+              <Field
+                id="su-first"
+                label="First name"
+                type="text"
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={set("firstName")}
+                error={errors.firstName}
+                autoFocus
+              />
+
+              <Field
+                id="su-last"
+                label="Last name"
+                type="text"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={set("lastName")}
+                error={errors.lastName}
+              />
+            </div>
+
+            <Field
+              id="su-email"
+              label="Email"
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={set("email")}
+              error={errors.email}
+            />
+
+            <Field
+              id="su-phone"
+              label="Phone number"
+              type="tel"
+              autoComplete="tel"
+              value={form.phone}
+              onChange={set("phone")}
+              error={errors.phone}
+            />
+          </Section>
+
+          {/* SECURITY */}
+
+          <Section
+            title="Password"
+            description="Use 8 or more characters with a mix of letters, numbers and symbols."
+          >
+            <Field
+              id="su-password"
+              label="Password"
+              type={showPw ? "text" : "password"}
+              autoComplete="new-password"
+              value={form.password}
+              onChange={set("password")}
+              error={errors.password}
+            >
+              <button
+                type="button"
+                className="su-toggle"
+                onClick={() => setShowPw((previous) => !previous)}
+                aria-pressed={showPw}
+              >
+                {showPw ? "Hide" : "Show"}
+              </button>
+            </Field>
+
+            {form.password && (
+              <>
+                <div className="su-meter" aria-hidden="true">
+                  {[0, 1, 2, 3].map((index) => (
+                    <span
+                      key={index}
+                      style={
+                        index < strength
+                          ? { background: STRENGTH_COLORS[strength - 1] }
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+
+                <p className="su-hint" aria-live="polite">
+                  Password strength: {STRENGTH_LABELS[strength - 1]}
+                </p>
+              </>
+            )}
+
+            <Field
+              id="su-confirm"
+              label="Confirm password"
+              type={showPw ? "text" : "password"}
+              autoComplete="new-password"
+              value={form.confirm}
+              onChange={set("confirm")}
+              error={errors.confirm}
+            />
+          </Section>
 
           {/* INSTITUTE DETAILS */}
 
-          <h3 className="su-section-title">Institute details</h3>
-
-          <Field
-            id="su-institute"
-            label="Institute name"
-            type="text"
-            value={form.instituteName}
-            onChange={set("instituteName")}
-            error={errors.instituteName}
-          />
-
-          <select
-            className="su-select"
-            value={form.instituteType}
-            onChange={set("instituteType")}
+          <Section
+            title="Institute details"
+            description="Where you study or teach."
           >
-            <option value="">Select institute type</option>
-            <option value="SCHOOL">School</option>
-            <option value="UNIVERSITY">University</option>
-            <option value="COLLEGE">College</option>
-            <option value="OTHER">Other</option>
-          </select>
+            <Field
+              id="su-institute"
+              label="Institute name"
+              type="text"
+              value={form.instituteName}
+              onChange={set("instituteName")}
+              error={errors.instituteName}
+            />
 
-          <Field
-            id="su-faculty"
-            label="Faculty (optional)"
-            type="text"
-            value={form.faculty}
-            onChange={set("faculty")}
-          />
+            <Select
+              id="su-institute-type"
+              label="Institute type"
+              placeholder="Select"
+              value={form.instituteType}
+              onChange={set("instituteType")}
+              options={INSTITUTE_TYPES}
+              error={errors.instituteType}
+            />
 
-          <Field
-            id="su-department"
-            label="Department (optional)"
-            type="text"
-            value={form.department}
-            onChange={set("department")}
-          />
+            <div className="su-row">
+              <Field
+                id="su-faculty"
+                label="Faculty (optional)"
+                type="text"
+                value={form.faculty}
+                onChange={set("faculty")}
+              />
+
+              <Field
+                id="su-department"
+                label="Department (optional)"
+                type="text"
+                value={form.department}
+                onChange={set("department")}
+              />
+            </div>
+          </Section>
 
           {/* EDUCATION DETAILS */}
 
-          <h3 className="su-section-title">Education details</h3>
-
-          <select
-            className="su-select"
-            value={form.educationLevel}
-            onChange={set("educationLevel")}
+          <Section
+            title="Education details"
+            description="Your current level of study."
           >
-            <option value="">Select education level</option>
-            <option value="PRIMARY">Primary</option>
-            <option value="SECONDARY">Secondary</option>
-            <option value="O_LEVEL">O/L</option>
-            <option value="A_LEVEL">A/L</option>
-            <option value="DIPLOMA">Diploma</option>
-            <option value="UNDERGRADUATE">Undergraduate</option>
-            <option value="POSTGRADUATE">Postgraduate</option>
-            <option value="OTHER">Other</option>
-          </select>
+            <Select
+              id="su-level"
+              label="Education level"
+              placeholder="Select"
+              value={form.educationLevel}
+              onChange={set("educationLevel")}
+              options={EDUCATION_LEVELS}
+              error={errors.educationLevel}
+            />
 
-          <Field
-            id="su-grade"
-            label="Current year / grade (optional)"
-            type="text"
-            value={form.currentYearOrGrade}
-            onChange={set("currentYearOrGrade")}
-          />
+            <div className="su-row">
+              <Field
+                id="su-grade"
+                label="Year / grade (optional)"
+                type="text"
+                value={form.currentYearOrGrade}
+                onChange={set("currentYearOrGrade")}
+              />
 
-          <Field
-            id="su-study"
-            label="Field of study (optional)"
-            type="text"
-            value={form.fieldOfStudy}
-            onChange={set("fieldOfStudy")}
-          />
+              <Field
+                id="su-study"
+                label="Field of study (optional)"
+                type="text"
+                value={form.fieldOfStudy}
+                onChange={set("fieldOfStudy")}
+              />
+            </div>
+          </Section>
 
-          {/* ERROR MESSAGE */}
+          {/* FORM ERROR */}
 
-          {firstError && (
+          {errors.form && (
             <p className="su-error" role="alert">
-              {firstError}
+              {errors.form}
             </p>
           )}
 
@@ -747,7 +967,10 @@ function SignUp() {
             <input
               type="checkbox"
               checked={agree}
-              onChange={(e) => setAgree(e.target.checked)}
+              onChange={(e) => {
+                setAgree(e.target.checked);
+                setErrors((previous) => ({ ...previous, form: "" }));
+              }}
             />
 
             <span>
