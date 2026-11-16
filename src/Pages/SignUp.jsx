@@ -41,7 +41,7 @@ const css = `
 
 .su-header {
   text-align: center;
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 .su-mark {
@@ -373,6 +373,124 @@ const css = `
   text-align: center;
 }
 
+/* Step progress */
+
+.su-steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.su-step {
+  flex: 1;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.su-step.is-done {
+  cursor: pointer;
+}
+
+.su-step-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: #d2d2d7;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.su-step-bar i {
+  display: block;
+  height: 100%;
+  background: #0071e3;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.su-step.is-active .su-step-bar i,
+.su-step.is-done .su-step-bar i {
+  transform: scaleX(1);
+}
+
+.su-step-label {
+  font-size: 13px;
+  color: #86868b;
+  transition: color 0.2s;
+}
+
+.su-step.is-active .su-step-label,
+.su-step.is-done .su-step-label {
+  color: #1d1d1f;
+}
+
+.su-step:focus-visible {
+  outline: 2px solid #0071e3;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Horizontal slider */
+
+.su-viewport {
+  overflow: hidden;
+  /* room so focus rings aren't clipped */
+  margin: -8px;
+}
+
+.su-track {
+  display: flex;
+  align-items: flex-start;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.su-panel {
+  flex: 0 0 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px;
+  /* inactive panels collapse and leave the tab order
+     only after the slide has finished */
+  max-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.35s ease, max-height 0s 0.45s, visibility 0s 0.45s;
+}
+
+.su-panel.is-active {
+  max-height: 4000px;
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.35s ease 0.1s, max-height 0s, visibility 0s;
+}
+
+/* Back / Continue */
+
+.su-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.su-actions .su-button {
+  flex: 1;
+}
+
+.su-actions .su-button.secondary {
+  flex: 0 0 120px;
+  background: #e8e8ed;
+  color: #1d1d1f;
+}
+
+.su-actions .su-button.secondary:hover:not(:disabled) {
+  background: #dcdce1;
+}
+
 /* Footer */
 
 .su-footer {
@@ -422,6 +540,10 @@ const css = `
     flex-direction: column;
     gap: 0;
   }
+
+  .su-actions .su-button.secondary {
+    flex-basis: 96px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -430,7 +552,10 @@ const css = `
   .su-label,
   .su-button,
   .su-seg button,
-  .su-meter span {
+  .su-meter span,
+  .su-track,
+  .su-panel,
+  .su-step-bar i {
     transition: none;
   }
 }
@@ -461,6 +586,26 @@ const EDUCATION_LEVELS = [
   { value: "POSTGRADUATE", label: "Postgraduate" },
   { value: "OTHER", label: "Other" },
 ];
+
+// Which form fields belong to which step (used for per-step validation)
+const STEPS = [
+  {
+    label: "Account",
+    fields: [
+      "role",
+      "firstName",
+      "lastName",
+      "email",
+      "phone",
+      "password",
+      "confirm",
+    ],
+  },
+  { label: "Institute", fields: ["instituteName", "instituteType"] },
+  { label: "Education", fields: ["educationLevel", "form"] },
+];
+
+const LAST_STEP = STEPS.length - 1;
 
 function strengthOf(password) {
   if (!password) return 0;
@@ -580,6 +725,7 @@ function SignUp() {
   const [agree, setAgree] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(0);
 
   const set = (key) => (e) => {
     setForm((previous) => ({
@@ -651,18 +797,59 @@ function SignUp() {
     return next;
   };
 
+  // Move focus to the first invalid field (without scrolling the slider).
+  const focusFirstInvalid = () => {
+    setTimeout(() => {
+      formRef.current
+        ?.querySelector('[aria-invalid="true"]')
+        ?.focus({ preventScroll: true });
+    }, 0);
+  };
+
+  const goTo = (index) => {
+    setStep(index);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Validate only the current step, then slide forward.
+  const handleNext = () => {
+    const all = validate();
+    const stepErrors = {};
+
+    STEPS[step].fields.forEach((key) => {
+      if (key !== "form" && all[key]) stepErrors[key] = all[key];
+    });
+
+    setErrors(stepErrors);
+
+    if (Object.keys(stepErrors).length > 0) {
+      focusFirstInvalid();
+      return;
+    }
+
+    goTo(step + 1);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // On steps 1 and 2, Enter / Continue just moves forward.
+    if (step < LAST_STEP) {
+      handleNext();
+      return;
+    }
 
     const next = validate();
 
     setErrors(next);
 
     if (Object.keys(next).length > 0) {
-      // Move focus to the first invalid field.
-      setTimeout(() => {
-        formRef.current?.querySelector('[aria-invalid="true"]')?.focus();
-      }, 0);
+      // Jump back to the step that holds the first error.
+      const bad = STEPS.findIndex((s) => s.fields.some((f) => next[f]));
+
+      if (bad !== -1 && bad !== step) goTo(bad);
+
+      focusFirstInvalid();
 
       return;
     }
@@ -743,258 +930,316 @@ function SignUp() {
           </p>
         </header>
 
-        <form ref={formRef} onSubmit={handleSubmit} noValidate>
-          {/* ACCOUNT TYPE */}
+        {/* STEP PROGRESS */}
 
-          <Section
-            title="Account type"
-            description="Choose how you will use your account."
-          >
-            <div className="su-seg" role="radiogroup" aria-label="Account type">
-              {ROLES.map((role) => (
-                <button
-                  key={role.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={form.role === role.value}
-                  onClick={() => setRole(role.value)}
-                >
-                  {role.label}
-                </button>
-              ))}
-            </div>
-
-            {errors.role && <p className="su-field-error">{errors.role}</p>}
-          </Section>
-
-          {/* PERSONAL DETAILS */}
-
-          <Section
-            title={form.role === "TUTOR" ? "Tutor details" : "Student details"}
-            description="Tell us who you are and how to reach you."
-          >
-            <div className="su-row">
-              <Field
-                id="su-first"
-                label="First name"
-                type="text"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={set("firstName")}
-                error={errors.firstName}
-                autoFocus
-              />
-
-              <Field
-                id="su-last"
-                label="Last name"
-                type="text"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={set("lastName")}
-                error={errors.lastName}
-              />
-            </div>
-
-            <Field
-              id="su-email"
-              label="Email"
-              type="email"
-              autoComplete="email"
-              value={form.email}
-              onChange={set("email")}
-              error={errors.email}
-            />
-
-            <Field
-              id="su-phone"
-              label="Phone number"
-              type="tel"
-              autoComplete="tel"
-              value={form.phone}
-              onChange={set("phone")}
-              error={errors.phone}
-            />
-          </Section>
-
-          {/* SECURITY */}
-
-          <Section
-            title="Password"
-            description="Use 8 or more characters with a mix of letters, numbers and symbols."
-          >
-            <Field
-              id="su-password"
-              label="Password"
-              type={showPw ? "text" : "password"}
-              autoComplete="new-password"
-              value={form.password}
-              onChange={set("password")}
-              error={errors.password}
+        <div className="su-steps">
+          {STEPS.map((s, i) => (
+            <button
+              key={s.label}
+              type="button"
+              className={`su-step${i === step ? " is-active" : ""}${
+                i < step ? " is-done" : ""
+              }`}
+              onClick={() => i < step && goTo(i)}
+              disabled={i > step}
+              aria-current={i === step ? "step" : undefined}
             >
+              <div className="su-step-bar">
+                <i />
+              </div>
+
+              <span className="su-step-label">
+                {i + 1}. {s.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <form ref={formRef} onSubmit={handleSubmit} noValidate>
+          <div className="su-viewport">
+            <div
+              className="su-track"
+              style={{ transform: `translateX(-${step * 100}%)` }}
+            >
+              {/* STEP 1: ACCOUNT */}
+
+              <div className={`su-panel${step === 0 ? " is-active" : ""}`}>
+                <Section
+                  title="Account type"
+                  description="Choose how you will use your account."
+                >
+                  <div
+                    className="su-seg"
+                    role="radiogroup"
+                    aria-label="Account type"
+                  >
+                    {ROLES.map((role) => (
+                      <button
+                        key={role.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={form.role === role.value}
+                        onClick={() => setRole(role.value)}
+                      >
+                        {role.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {errors.role && (
+                    <p className="su-field-error">{errors.role}</p>
+                  )}
+                </Section>
+
+                <Section
+                  title={
+                    form.role === "TUTOR" ? "Tutor details" : "Student details"
+                  }
+                  description="Tell us who you are and how to reach you."
+                >
+                  <div className="su-row">
+                    <Field
+                      id="su-first"
+                      label="First name"
+                      type="text"
+                      autoComplete="given-name"
+                      value={form.firstName}
+                      onChange={set("firstName")}
+                      error={errors.firstName}
+                      autoFocus
+                    />
+
+                    <Field
+                      id="su-last"
+                      label="Last name"
+                      type="text"
+                      autoComplete="family-name"
+                      value={form.lastName}
+                      onChange={set("lastName")}
+                      error={errors.lastName}
+                    />
+                  </div>
+
+                  <Field
+                    id="su-email"
+                    label="Email"
+                    type="email"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={set("email")}
+                    error={errors.email}
+                  />
+
+                  <Field
+                    id="su-phone"
+                    label="Phone number"
+                    type="tel"
+                    autoComplete="tel"
+                    value={form.phone}
+                    onChange={set("phone")}
+                    error={errors.phone}
+                  />
+                </Section>
+
+                <Section
+                  title="Password"
+                  description="Use 8 or more characters with a mix of letters, numbers and symbols."
+                >
+                  <Field
+                    id="su-password"
+                    label="Password"
+                    type={showPw ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={form.password}
+                    onChange={set("password")}
+                    error={errors.password}
+                  >
+                    <button
+                      type="button"
+                      className="su-toggle"
+                      onClick={() => setShowPw((previous) => !previous)}
+                      aria-pressed={showPw}
+                    >
+                      {showPw ? "Hide" : "Show"}
+                    </button>
+                  </Field>
+
+                  {form.password && (
+                    <>
+                      <div className="su-meter" aria-hidden="true">
+                        {[0, 1, 2, 3].map((index) => (
+                          <span
+                            key={index}
+                            style={
+                              index < strength
+                                ? { background: STRENGTH_COLORS[strength - 1] }
+                                : undefined
+                            }
+                          />
+                        ))}
+                      </div>
+
+                      <p className="su-hint" aria-live="polite">
+                        Password strength: {STRENGTH_LABELS[strength - 1]}
+                      </p>
+                    </>
+                  )}
+
+                  <Field
+                    id="su-confirm"
+                    label="Confirm password"
+                    type={showPw ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={form.confirm}
+                    onChange={set("confirm")}
+                    error={errors.confirm}
+                  />
+                </Section>
+              </div>
+
+              {/* STEP 2: INSTITUTE */}
+
+              <div className={`su-panel${step === 1 ? " is-active" : ""}`}>
+                <Section
+                  title="Institute details"
+                  description="Where you study or teach."
+                >
+                  <Field
+                    id="su-institute"
+                    label="Institute name"
+                    type="text"
+                    value={form.instituteName}
+                    onChange={set("instituteName")}
+                    error={errors.instituteName}
+                  />
+
+                  <Select
+                    id="su-institute-type"
+                    label="Institute type"
+                    placeholder="Select"
+                    value={form.instituteType}
+                    onChange={set("instituteType")}
+                    options={INSTITUTE_TYPES}
+                    error={errors.instituteType}
+                  />
+
+                  <div className="su-row">
+                    <Field
+                      id="su-faculty"
+                      label="Faculty (optional)"
+                      type="text"
+                      value={form.faculty}
+                      onChange={set("faculty")}
+                    />
+
+                    <Field
+                      id="su-department"
+                      label="Department (optional)"
+                      type="text"
+                      value={form.department}
+                      onChange={set("department")}
+                    />
+                  </div>
+                </Section>
+              </div>
+
+              {/* STEP 3: EDUCATION + TERMS */}
+
+              <div className={`su-panel${step === 2 ? " is-active" : ""}`}>
+                <Section
+                  title="Education details"
+                  description="Your current level of study."
+                >
+                  <Select
+                    id="su-level"
+                    label="Education level"
+                    placeholder="Select"
+                    value={form.educationLevel}
+                    onChange={set("educationLevel")}
+                    options={EDUCATION_LEVELS}
+                    error={errors.educationLevel}
+                  />
+
+                  <div className="su-row">
+                    <Field
+                      id="su-grade"
+                      label="Year / grade (optional)"
+                      type="text"
+                      value={form.currentYearOrGrade}
+                      onChange={set("currentYearOrGrade")}
+                    />
+
+                    <Field
+                      id="su-study"
+                      label="Field of study (optional)"
+                      type="text"
+                      value={form.fieldOfStudy}
+                      onChange={set("fieldOfStudy")}
+                    />
+                  </div>
+                </Section>
+
+                {/* FORM ERROR */}
+
+                {errors.form && (
+                  <p className="su-error" role="alert">
+                    {errors.form}
+                  </p>
+                )}
+
+                {/* TERMS */}
+
+                <label className="su-check">
+                  <input
+                    type="checkbox"
+                    checked={agree}
+                    onChange={(e) => {
+                      setAgree(e.target.checked);
+                      setErrors((previous) => ({ ...previous, form: "" }));
+                    }}
+                  />
+
+                  <span>
+                    I agree to the{" "}
+                    <a className="su-link" href="#terms">
+                      Terms of Use
+                    </a>{" "}
+                    and{" "}
+                    <a className="su-link" href="#privacy">
+                      Privacy Policy
+                    </a>
+                    .
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* NAVIGATION */}
+
+          <div className="su-actions">
+            {step > 0 && (
               <button
                 type="button"
-                className="su-toggle"
-                onClick={() => setShowPw((previous) => !previous)}
-                aria-pressed={showPw}
+                className="su-button secondary"
+                onClick={() => goTo(step - 1)}
               >
-                {showPw ? "Hide" : "Show"}
+                Back
               </button>
-            </Field>
-
-            {form.password && (
-              <>
-                <div className="su-meter" aria-hidden="true">
-                  {[0, 1, 2, 3].map((index) => (
-                    <span
-                      key={index}
-                      style={
-                        index < strength
-                          ? { background: STRENGTH_COLORS[strength - 1] }
-                          : undefined
-                      }
-                    />
-                  ))}
-                </div>
-
-                <p className="su-hint" aria-live="polite">
-                  Password strength: {STRENGTH_LABELS[strength - 1]}
-                </p>
-              </>
             )}
 
-            <Field
-              id="su-confirm"
-              label="Confirm password"
-              type={showPw ? "text" : "password"}
-              autoComplete="new-password"
-              value={form.confirm}
-              onChange={set("confirm")}
-              error={errors.confirm}
-            />
-          </Section>
-
-          {/* INSTITUTE DETAILS */}
-
-          <Section
-            title="Institute details"
-            description="Where you study or teach."
-          >
-            <Field
-              id="su-institute"
-              label="Institute name"
-              type="text"
-              value={form.instituteName}
-              onChange={set("instituteName")}
-              error={errors.instituteName}
-            />
-
-            <Select
-              id="su-institute-type"
-              label="Institute type"
-              placeholder="Select"
-              value={form.instituteType}
-              onChange={set("instituteType")}
-              options={INSTITUTE_TYPES}
-              error={errors.instituteType}
-            />
-
-            <div className="su-row">
-              <Field
-                id="su-faculty"
-                label="Faculty (optional)"
-                type="text"
-                value={form.faculty}
-                onChange={set("faculty")}
-              />
-
-              <Field
-                id="su-department"
-                label="Department (optional)"
-                type="text"
-                value={form.department}
-                onChange={set("department")}
-              />
-            </div>
-          </Section>
-
-          {/* EDUCATION DETAILS */}
-
-          <Section
-            title="Education details"
-            description="Your current level of study."
-          >
-            <Select
-              id="su-level"
-              label="Education level"
-              placeholder="Select"
-              value={form.educationLevel}
-              onChange={set("educationLevel")}
-              options={EDUCATION_LEVELS}
-              error={errors.educationLevel}
-            />
-
-            <div className="su-row">
-              <Field
-                id="su-grade"
-                label="Year / grade (optional)"
-                type="text"
-                value={form.currentYearOrGrade}
-                onChange={set("currentYearOrGrade")}
-              />
-
-              <Field
-                id="su-study"
-                label="Field of study (optional)"
-                type="text"
-                value={form.fieldOfStudy}
-                onChange={set("fieldOfStudy")}
-              />
-            </div>
-          </Section>
-
-          {/* FORM ERROR */}
-
-          {errors.form && (
-            <p className="su-error" role="alert">
-              {errors.form}
-            </p>
-          )}
-
-          {/* TERMS */}
-
-          <label className="su-check">
-            <input
-              type="checkbox"
-              checked={agree}
-              onChange={(e) => {
-                setAgree(e.target.checked);
-                setErrors((previous) => ({ ...previous, form: "" }));
-              }}
-            />
-
-            <span>
-              I agree to the{" "}
-              <a className="su-link" href="#terms">
-                Terms of Use
-              </a>{" "}
-              and{" "}
-              <a className="su-link" href="#privacy">
-                Privacy Policy
-              </a>
-              .
-            </span>
-          </label>
-
-          {/* SUBMIT */}
-
-          <button
-            type="submit"
-            className="su-button"
-            disabled={!agree || loading}
-          >
-            {loading ? "Creating account..." : "Create account"}
-          </button>
+            <button
+              type="submit"
+              className="su-button"
+              disabled={step === LAST_STEP && (!agree || loading)}
+            >
+              {step < LAST_STEP
+                ? "Continue"
+                : loading
+                  ? "Creating account..."
+                  : "Create account"}
+            </button>
+          </div>
         </form>
 
         <hr className="su-divider" />

@@ -5,7 +5,7 @@ import {
   useTransform,
   useReducedMotion,
 } from "framer-motion";
-
+import video from "../../assets/jk.mp4";
 /*
   Setup:
     npm install framer-motion
@@ -97,12 +97,23 @@ function Hero() {
           custom={1}
           initial="hidden"
           animate="show"
-          className="mt-2 text-[44px] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[64px] md:text-[88px]"
+          className="mt-2 text-[44px] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[64px] md:text-[88px] text-[#3b2a14]"
         >
-          Learn from people
+          Learn from{" "}
+          <span className="bg-gradient-to-r from-[#d97706] to-[#f59e0b] bg-clip-text text-transparent">
+            people
+          </span>
           <br />
-          who ship.
+          who{" "}
+          <span className="bg-gradient-to-r from-[#f59e0b] via-[#facc15] to-[#fb923c] bg-clip-text text-transparent">
+            ship.
+          </span>
         </motion.h1>
+        <div className="video-container">
+          <video src={video} autoPlay loop muted playsInline width="1800">
+            Your browser does not support video.
+          </video>
+        </div>
         <motion.p
           variants={fade}
           custom={2}
